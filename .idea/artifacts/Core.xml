@@ -79,6 +79,8 @@
       <element id="library" level="project" name="Maven: org.jetbrains.kotlin:kotlin-stdlib:1.8.21" />
       <element id="library" level="project" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.21" />
       <element id="library" level="project" name="Maven: com.zaxxer:HikariCP:5.0.1" />
+      <element id="module-output" name="core" />
+      <element id="library" level="project" name="Maven: com.google.errorprone:error_prone_annotations:2.27.0" />
     </root>
   </artifact>
 </component>
