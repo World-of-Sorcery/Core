@@ -140,6 +140,8 @@ public final class WoSCore extends JavaPlugin {
         // Who is online, for the portal's "Online staff".
         presence = new me.hektortm.wosCore.presence.PresenceReporter(this, api);
         presence.start();
+        // Every WoS plugin's permission nodes, for the portal's node list.
+        me.hektortm.wosCore.permissions.PermissionCatalog.schedule(this);
         commandReg("writelog", new DebugCommand(logManager, lang, this));
         commandReg("discord", new DiscordCommand(this));
 
