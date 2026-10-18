@@ -48,6 +48,10 @@ public final class WoSCore extends JavaPlugin {
     private DatabaseManager dbManager;
     private me.hektortm.wosCore.api.WosApi api;
     private me.hektortm.wosCore.presence.PresenceReporter presence;
+    private me.hektortm.wosCore.presence.NetworkOnline networkOnline;
+    private me.hektortm.wosCore.server.ServerRegistrar registrar;
+    private static me.hektortm.wosCore.server.ServerIdentity identity = me.hektortm.wosCore.server.ServerIdentity.defaults();
+    private me.hektortm.wosCore.net.NetworkBus bus = me.hektortm.wosCore.net.NetworkBus.disabled();
     private LogManager logManager;
     private LangManager lang;
     private File langDirectory;
@@ -58,6 +62,20 @@ public final class WoSCore extends JavaPlugin {
     @Override
     public void onEnable() {
         instance = this;
+        try {
+            identity = me.hektortm.wosCore.server.ServerIdentity.from(getConfig().getConfigurationSection("server"), System.getenv());
+        } catch (IllegalArgumentException e) {
+            getLogger().severe("Invalid server identity, Core stays disabled: " + e.getMessage());
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        getLogger().info("Server identity: id=" + identity.id() + ", tag=" + identity.tag() + ", realm=" + identity.realm());
+        // Redis message bus between servers; env WOS_REDIS_URL wins over redis.url. Empty = disabled. The URL is never logged.
+        bus = me.hektortm.wosCore.net.NetworkBus.create(
+                me.hektortm.wosCore.net.NetworkBus.resolveUrl(System.getenv("WOS_REDIS_URL"), getConfig().getString("redis.url", "")),
+                identity.id(), getLogger());
+        // The proxy's channel for "send this player to server X" (ServerConnect); registered once here.
+        getServer().getMessenger().registerOutgoingPluginChannel(this, me.hektortm.wosCore.net.ServerConnect.CHANNEL);
 
         try {
             // build() is non-blocking: JDA connects to the Discord gateway on its own
@@ -81,7 +99,7 @@ public final class WoSCore extends JavaPlugin {
         // wos-api: the Go service that owns content (and, progressively, all) data.
         api = new me.hektortm.wosCore.api.WosApi(
                 getConfig().getString("api.url", "http://localhost:8080"),
-                getConfig().getString("api.token", ""),
+                apiToken(),
                 java.time.Duration.ofMillis(getConfig().getLong("api.timeout-ms", 5000)),
                 getLogger()
         );
@@ -140,6 +158,14 @@ public final class WoSCore extends JavaPlugin {
         // Who is online, for the portal's "Online staff".
         presence = new me.hektortm.wosCore.presence.PresenceReporter(this, api);
         presence.start();
+        // Who is online on the whole network (/msg, friends, the tab list).
+        networkOnline = new me.hektortm.wosCore.presence.NetworkOnline(api);
+        // Tell wos-api this server is up (id and tag come from the token), then keep doing so.
+        String webhookUrl = System.getenv("WOS_WEBHOOK_URL");
+        if (webhookUrl == null || webhookUrl.isBlank()) webhookUrl = getConfig().getString("server.webhook-url", "");
+        registrar = new me.hektortm.wosCore.server.ServerRegistrar(this, api, webhookUrl, identity);
+        presence.setOnHeartbeat(registrar::heartbeat);
+        registrar.start();
         // Every WoS plugin's permission nodes, for the portal's node list.
         me.hektortm.wosCore.permissions.PermissionCatalog.schedule(this);
         commandReg("writelog", new DebugCommand(logManager, lang, this));
@@ -158,7 +184,10 @@ public final class WoSCore extends JavaPlugin {
     @Override
     public void onDisable() {
         reloadConfig();
-        if (presence != null) presence.stop(); // the server is empty now
+        if (presence != null) presence.stop(bus.isEnabled()); // bus on: players still here keep their rows until they move
+        if (networkOnline != null) networkOnline.close();
+        bus.close();
+        getServer().getMessenger().unregisterOutgoingPluginChannel(this, me.hektortm.wosCore.net.ServerConnect.CHANNEL);
         try {
             dbManager.closeConnection();
         } catch (Exception e) {
@@ -189,6 +218,27 @@ public final class WoSCore extends JavaPlugin {
     public void writeLog(String name, Level level, String message) {
         Logger LOGGER = Logger.getLogger(name);
         LOGGER.log(level, message);
+    }
+
+    /** This server's id and tag (set at enable; {@code live}/{@code live} if Core did not start). */
+    public static me.hektortm.wosCore.server.ServerIdentity identity() {
+        return identity;
+    }
+
+    /** The Redis message bus between servers; {@code NetworkBus.disabled()} when no Redis is configured. Handlers run off the main thread. */
+    public me.hektortm.wosCore.net.NetworkBus network() {
+        return bus;
+    }
+
+    /** Who is online on the whole network (wos-api); null only if Core did not start. Blocking fetches: never on the main thread. */
+    public me.hektortm.wosCore.presence.NetworkOnline networkOnline() {
+        return networkOnline;
+    }
+
+    /** The API token: env {@code WOS_API_TOKEN} wins over {@code api.token}. Never log it. */
+    private String apiToken() {
+        String env = System.getenv("WOS_API_TOKEN");
+        return env != null && !env.isBlank() ? env.trim() : getConfig().getString("api.token", "");
     }
 
     private void loadConfig() {

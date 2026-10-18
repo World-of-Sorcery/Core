@@ -11,7 +11,7 @@
 
     <groupId>me.hektortm</groupId>
     <artifactId>core</artifactId>
-    <version>1.21.8-0.1.2</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>core</name>
@@ -71,6 +71,23 @@
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
             <version>5.0.1</version>
+        </dependency>
+        <!-- Redis message bus (net.NetworkBus). Bundled and relocated. Jedis' gson and slf4j
+             (Paper ships both) are excluded so the jar holds no second copy. -->
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>5.1.5</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.code.gson</groupId>
+                    <artifactId>gson</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- Tests only (same versions as the other plugins). -->
         <dependency>
@@ -137,6 +154,18 @@
                                 <relocation>
                                     <pattern>kotlin</pattern>
                                     <shadedPattern>me.hektortm.wosCore.libs.kotlin</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>redis.clients</pattern>
+                                    <shadedPattern>me.hektortm.wosCore.libs.redis.clients</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.apache.commons.pool2</pattern>
+                                    <shadedPattern>me.hektortm.wosCore.libs.org.apache.commons.pool2</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.json</pattern>
+                                    <shadedPattern>me.hektortm.wosCore.libs.org.json</shadedPattern>
                                 </relocation>
                                 <!-- gson is NOT bundled or relocated: Paper ships it, and
                                      Core's public WosApi (used by the other plugins) exposes

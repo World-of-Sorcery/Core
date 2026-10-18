@@ -20,3 +20,17 @@ api:
   url: 'http://localhost:8080'
   token: ''
   timeout-ms: 5000
+
+# Redis message bus between servers (chat, server switch, staff alerts). Empty = off. Env WOS_REDIS_URL overrides; the URL may hold a password and is never logged.
+redis:
+  url: ''
+
+# Which server this is (code defaults: id live, tag live; uncomment to set). No tag set = the old single server (takes every reload); WoS plugins read the tag from here. Env WOS_SERVER_ID / WOS_SERVER_TAG / WOS_WEBHOOK_URL override these;
+# env WOS_API_TOKEN overrides api.token. tag: hub | backend | staging | live.
+server:
+  # id: 'live'
+  # tag: 'live'
+  # URL wos-api calls on THIS server for reloads. Leave empty on the old single (pm2) server:
+  # once a server registers a URL it is treated as a registered server of its tag, and a
+  # registered `live` server no longer receives content reloads.
+  webhook-url: ''

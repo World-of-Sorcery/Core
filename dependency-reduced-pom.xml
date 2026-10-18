@@ -4,7 +4,7 @@
   <groupId>me.hektortm</groupId>
   <artifactId>core</artifactId>
   <name>core</name>
-  <version>1.21.8-0.1.0</version>
+  <version>1.21.8-0.2.0</version>
   <build>
     <defaultGoal>clean package</defaultGoal>
     <resources>
@@ -52,6 +52,18 @@
                 <relocation>
                   <pattern>kotlin</pattern>
                   <shadedPattern>me.hektortm.wosCore.libs.kotlin</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>redis.clients</pattern>
+                  <shadedPattern>me.hektortm.wosCore.libs.redis.clients</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.apache.commons.pool2</pattern>
+                  <shadedPattern>me.hektortm.wosCore.libs.org.apache.commons.pool2</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.json</pattern>
+                  <shadedPattern>me.hektortm.wosCore.libs.org.json</shadedPattern>
                 </relocation>
               </relocations>
               <artifactSet>

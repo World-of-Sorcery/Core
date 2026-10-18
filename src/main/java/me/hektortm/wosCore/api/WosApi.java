@@ -86,6 +86,11 @@ public final class WosApi {
         throw last;
     }
 
+    /** GET a resource as raw JSON in one attempt (no retries): the request goes out when this is called. */
+    public JsonElement getJsonOnce(String path) throws ApiException {
+        return execute(request(path).get().build());
+    }
+
     /** Send a write (POST/PUT/PATCH/DELETE) with an optional JSON body; returns the response JSON (or null). */
     public JsonElement send(String method, String path, Object body) throws ApiException {
         return send(method, path, body, java.util.Map.of());
@@ -123,8 +128,10 @@ public final class WosApi {
     private ApiException error(int status, String text, Request req) {
         String code = "http_" + status;
         String message = req.method() + " " + req.url().encodedPath() + " -> " + status;
+        JsonObject whole = null;
         try {
             JsonElement body = JsonParser.parseString(text);
+            if (body.isJsonObject()) whole = body.getAsJsonObject();
             JsonElement err = body.isJsonObject() ? body.getAsJsonObject().get("error") : null;
             if (err != null && err.isJsonObject()) {
                 JsonObject e = err.getAsJsonObject();
@@ -135,7 +142,7 @@ public final class WosApi {
             // body is not an API error envelope — keep the generic code/message
         }
         if (status >= 500) log.warning("[WosApi] " + message);
-        return new ApiException(status, code, message);
+        return new ApiException(status, code, message, whole);
     }
 
     private static void sleep(long ms) {

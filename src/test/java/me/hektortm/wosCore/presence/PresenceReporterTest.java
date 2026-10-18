@@ -32,4 +32,21 @@ class PresenceReporterTest {
     void anEmptyServerIsAnEmptyList() {
         assertThat(PresenceReporter.body(List.of(), null)).isEmpty();
     }
+
+    @Test
+    void withoutTheBusAStopAlwaysEmptiesTheList() {
+        assertThat(PresenceReporter.emptiesOnStop(false, 0)).isTrue();
+        assertThat(PresenceReporter.emptiesOnStop(false, 12)).isTrue();
+    }
+
+    @Test
+    void withTheBusAStopKeepsPlayersStillOnlineListed() {
+        // they move to the hub: its report takes the rows over, so it reads as a switch
+        assertThat(PresenceReporter.emptiesOnStop(true, 12)).isFalse();
+    }
+
+    @Test
+    void withTheBusAnEmptyServerStillEmptiesTheList() {
+        assertThat(PresenceReporter.emptiesOnStop(true, 0)).isTrue();
+    }
 }

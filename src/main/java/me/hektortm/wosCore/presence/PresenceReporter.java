@@ -45,6 +45,7 @@ public final class PresenceReporter implements Listener {
         return t;
     });
     private BukkitTask heartbeat;
+    private volatile Runnable onHeartbeat;
     /** Whether the last report failed: warn once per outage, not every 30 s. */
     private volatile boolean failing;
 
@@ -56,11 +57,25 @@ public final class PresenceReporter implements Listener {
     /** Registers the join/quit listener and starts the heartbeat (also reports once now: a reload keeps players online). */
     public void start() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
-        heartbeat = Bukkit.getScheduler().runTaskTimer(plugin, () -> report(null), 20L, HEARTBEAT_TICKS);
+        heartbeat = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            report(null);
+            Runnable hook = onHeartbeat;
+            if (hook != null) hook.run();
+        }, 20L, HEARTBEAT_TICKS);
     }
 
-    /** Stops the heartbeat and reports an empty server (blocking, on shutdown). */
-    public void stop() {
+    /** Runs on the main thread with every 30 s heartbeat (the server registration refresh). */
+    public void setOnHeartbeat(Runnable hook) {
+        this.onHeartbeat = hook;
+    }
+
+    /**
+     * Stops the heartbeat and reports an empty server (blocking, on shutdown).
+     * With the message bus on, players still online are left listed: the proxy moves them
+     * to the next server, whose report takes their rows over (a switch, not a network
+     * join), and rows nobody refreshes go stale after 90 s.
+     */
+    public void stop(boolean busEnabled) {
         if (heartbeat != null) heartbeat.cancel();
         sender.shutdown();
         try {
@@ -68,7 +83,12 @@ public final class PresenceReporter implements Listener {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        send(List.of());
+        if (emptiesOnStop(busEnabled, Bukkit.getOnlinePlayers().size())) send(List.of());
+    }
+
+    /** Whether a stopping server reports an empty list: always without the bus, else only when nobody is online. */
+    static boolean emptiesOnStop(boolean busEnabled, int online) {
+        return !busEnabled || online == 0;
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
