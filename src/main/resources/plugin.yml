@@ -1,7 +1,7 @@
-name: WoSCore
-version: '1.7.0'
+name: Core
+version: '${project.version}'
 main: me.hektortm.wosCore.WoSCore
-api-version: '1.21'
+api-version: '1.21.8'
 author: HektorTM
 commands:
   core:
@@ -21,23 +21,19 @@ commands:
 
 permissions:
   core.log:
-    description: access to all log commands
+    description: Every log command (view and write).
     default: op
     children:
       core.log.view: true
       core.log.write: true
 
   core.log.view:
-    description: View players logs
+    description: View players' logs.
     default: op
   core.log.write:
-    description: write a log
-    default: op
-
-  core.warning-user:
-    description: grants access to internal Warning messages
+    description: Write a log entry.
     default: op
 
   discord.send:
-    description: Send a message to the discord
+    description: Send a message to Discord.
     default: op

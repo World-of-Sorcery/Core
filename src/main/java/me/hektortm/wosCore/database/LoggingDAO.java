@@ -23,9 +23,9 @@ public class LoggingDAO implements IDAO{
         try (Connection conn = db.getConnection(); Statement statement = conn.createStatement()) {
             statement.execute("""
                 CREATE TABLE IF NOT EXISTS logs (
-                    time TIMESTAMP DEFAULT CURRENT TIMESTAMP,
+                    time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     username VARCHAR(36) NOT NULL,
-                    log TEXT NOT NULL,
+                    log TEXT NOT NULL
                 )
             """);
         }

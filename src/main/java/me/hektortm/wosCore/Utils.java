@@ -1,6 +1,9 @@
 package me.hektortm.wosCore;
 
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Sound;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -13,7 +16,9 @@ import java.util.regex.Pattern;
 public class Utils {
    private static LangManager lang;
    private static final Map<String, String> colorMap = new HashMap<>();
-
+    private static final Pattern HEX_PATTERN = Pattern.compile("#([a-fA-F0-9]{6})");
+    private static final LegacyComponentSerializer LEGACY_SERIALIZER =
+            LegacyComponentSerializer.legacySection();
     static {
         // Neutral
         colorMap.put("%neutral_300%", ColorCodes.NEUTRAL_300);
@@ -270,6 +275,112 @@ public class Utils {
             message = message.replace(entry.getKey(), entry.getValue());
         }
         return translateHexColorCodes(message);
+    }
+
+    public static Component parseColorCodes(String input) {
+        if (input == null || input.isEmpty()) {
+            return Component.empty();
+        }
+
+        Component result = Component.empty();
+        int lastIndex = 0;
+        var matcher = HEX_PATTERN.matcher(input);
+
+        while (matcher.find()) {
+            // Process text before this hex color
+            if (matcher.start() > lastIndex) {
+                String before = input.substring(lastIndex, matcher.start());
+                result = result.append(parseLegacy(before));
+            }
+
+            // Get the hex color
+            TextColor color = TextColor.fromHexString(matcher.group());
+            if (color == null) {
+                lastIndex = matcher.end(); // Skip invalid hex code but still update lastIndex
+                continue;
+            }
+
+            // Determine the next hex code's start, or end of string
+            int textStart = matcher.end();
+            int textEnd = input.length();
+
+            Matcher nextMatcher = HEX_PATTERN.matcher(input);
+            if (nextMatcher.find(textStart)) {
+                textEnd = nextMatcher.start();
+            }
+
+            // Extract the colored text
+            String coloredText = input.substring(textStart, textEnd);
+
+            // Even inside a hex section, legacy codes should be parsed
+            Component coloredComponent = parseLegacy(coloredText).color(color);
+            result = result.append(coloredComponent);
+
+            lastIndex = textEnd;
+        }
+
+        // Process any remaining text
+        if (lastIndex < input.length()) {
+            String remaining = input.substring(lastIndex);
+            result = result.append(parseLegacy(remaining));
+        }
+
+        return result;
+    }
+
+    public static String parseColorCodeString(String input) {
+        if (input == null || input.isEmpty()) {
+            return "";
+        }
+
+        Component result = Component.empty();
+        int lastIndex = 0;
+        var matcher = HEX_PATTERN.matcher(input);
+
+        while (matcher.find()) {
+            // Process text before this hex color
+            if (matcher.start() > lastIndex) {
+                String before = input.substring(lastIndex, matcher.start());
+                result = result.append(parseLegacy(before));
+            }
+
+            // Get the hex color
+            TextColor color = TextColor.fromHexString(matcher.group());
+            if (color == null) {
+                lastIndex = matcher.end(); // Skip invalid hex code
+                continue;
+            }
+
+            // Determine the next hex code's start, or end of string
+            int textStart = matcher.end();
+            int textEnd = input.length();
+
+            Matcher nextMatcher = HEX_PATTERN.matcher(input);
+            if (nextMatcher.find(textStart)) {
+                textEnd = nextMatcher.start();
+            }
+
+            String coloredText = input.substring(textStart, textEnd);
+            Component coloredComponent = parseLegacy(coloredText).color(color);
+            result = result.append(coloredComponent);
+
+            lastIndex = textEnd;
+        }
+
+        // Process any remaining text
+        if (lastIndex < input.length()) {
+            String remaining = input.substring(lastIndex);
+            result = result.append(parseLegacy(remaining));
+        }
+
+        // Serialize Component back into §-formatted String
+        return LEGACY_SERIALIZER.serialize(result);
+    }
+
+
+
+    private static Component parseLegacy(String text) {
+        return LEGACY_SERIALIZER.deserialize(text.replace('&', '§'));
     }
 
     public static String translateHexColorCodes(String message) {
