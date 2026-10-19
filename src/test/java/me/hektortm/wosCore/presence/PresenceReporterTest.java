@@ -18,14 +18,21 @@ class PresenceReporterTest {
     @Test
     void reportsEveryoneOnline() {
         assertThat(PresenceReporter.body(ONLINE, null)).containsExactly(
-                Map.of("uuid", HEKTOR.toString(), "username", "HektorTM"),
-                Map.of("uuid", NOTCH.toString(), "username", "Notch"));
+                Map.<String, Object>of("uuid", HEKTOR.toString(), "username", "HektorTM"),
+                Map.<String, Object>of("uuid", NOTCH.toString(), "username", "Notch"));
     }
 
     @Test
     void leavesOutThePlayerWhoIsQuitting() {
         assertThat(PresenceReporter.body(ONLINE, NOTCH))
-                .containsExactly(Map.of("uuid", HEKTOR.toString(), "username", "HektorTM"));
+                .containsExactly(Map.<String, Object>of("uuid", HEKTOR.toString(), "username", "HektorTM"));
+    }
+
+    @Test
+    void sendsTheSkinWhenThePlayerHasOne() {
+        assertThat(PresenceReporter.body(List.of(new PresenceReporter.Online(HEKTOR, "HektorTM", "tex", "sig")), null))
+                .containsExactly(Map.<String, Object>of("uuid", HEKTOR.toString(), "username", "HektorTM",
+                        "skin", Map.of("value", "tex", "signature", "sig")));
     }
 
     @Test

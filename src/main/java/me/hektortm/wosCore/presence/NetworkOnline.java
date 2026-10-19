@@ -55,13 +55,22 @@ public final class NetworkOnline {
             if (!e.isJsonObject()) continue;
             JsonObject o = e.getAsJsonObject();
             try {
+                JsonObject skin = o.has("skin") && o.get("skin").isJsonObject() ? o.getAsJsonObject("skin") : null;
                 out.add(new NetworkPlayer(UUID.fromString(o.get("uuid").getAsString()),
-                        o.get("username").getAsString(), o.get("server").getAsString()));
+                        o.get("username").getAsString(), o.get("server").getAsString(),
+                        text(o, "server_tag"), text(o, "prefix"),
+                        skin == null ? null : text(skin, "value"), skin == null ? null : text(skin, "signature")));
             } catch (RuntimeException bad) {
                 // a row we can't read: skip it
             }
         }
         return out;
+    }
+
+    /** A string field, "" when missing or null (an older wos-api leaves the tab list fields out). */
+    private static String text(JsonObject o, String key) {
+        JsonElement e = o.get(key);
+        return e == null || e.isJsonNull() ? "" : e.getAsString();
     }
 
     /**

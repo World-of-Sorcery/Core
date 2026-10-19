@@ -1,5 +1,6 @@
 package me.hektortm.wosCore.presence;
 
+import com.destroystokyo.paper.profile.ProfileProperty;
 import me.hektortm.wosCore.api.ApiException;
 import me.hektortm.wosCore.api.WosApi;
 import org.bukkit.Bukkit;
@@ -34,8 +35,24 @@ public final class PresenceReporter implements Listener {
     static final String PATH = "/v1/server/presence";
     private static final long HEARTBEAT_TICKS = 20L * 30;
 
-    /** One online player, as reported. */
-    public record Online(UUID uuid, String username) {}
+    /**
+     * One online player, as reported, with their skin (the signed "textures" property the proxy
+     * forwarded) so the other servers' tab lists can show their head; {@code null} when there is none.
+     */
+    public record Online(UUID uuid, String username, @Nullable String skinValue, @Nullable String skinSignature) {
+        public Online(UUID uuid, String username) {
+            this(uuid, username, null, null);
+        }
+
+        static Online of(Player p) {
+            for (ProfileProperty prop : p.getPlayerProfile().getProperties()) {
+                if (prop.getName().equals("textures")) {
+                    return new Online(p.getUniqueId(), p.getName(), prop.getValue(), prop.getSignature());
+                }
+            }
+            return new Online(p.getUniqueId(), p.getName());
+        }
+    }
 
     private final Plugin plugin;
     private final WosApi api;
@@ -104,9 +121,9 @@ public final class PresenceReporter implements Listener {
     /** Main thread: takes the list now and queues sending it. */
     private void report(@Nullable UUID leaving) {
         List<Online> online = Bukkit.getOnlinePlayers().stream()
-                .map((Player p) -> new Online(p.getUniqueId(), p.getName()))
+                .map(Online::of)
                 .toList();
-        List<Map<String, String>> players = body(online, leaving);
+        List<Map<String, Object>> players = body(online, leaving);
         try {
             sender.execute(() -> send(players));
         } catch (java.util.concurrent.RejectedExecutionException stopping) {
@@ -114,15 +131,25 @@ public final class PresenceReporter implements Listener {
         }
     }
 
-    /** The report's players: everyone online except the one leaving. */
-    static List<Map<String, String>> body(Collection<Online> online, @Nullable UUID leaving) {
+    /** The report's players: everyone online except the one leaving, each with their skin when they have one. */
+    static List<Map<String, Object>> body(Collection<Online> online, @Nullable UUID leaving) {
         return online.stream()
                 .filter(o -> !o.uuid().equals(leaving))
-                .map(o -> Map.of("uuid", o.uuid().toString(), "username", o.username()))
+                .map(PresenceReporter::row)
                 .toList();
     }
 
-    private void send(List<Map<String, String>> players) {
+    private static Map<String, Object> row(Online o) {
+        if (o.skinValue() == null || o.skinValue().isEmpty()) {
+            return Map.of("uuid", o.uuid().toString(), "username", o.username());
+        }
+        Map<String, String> skin = new java.util.HashMap<>();
+        skin.put("value", o.skinValue());
+        if (o.skinSignature() != null) skin.put("signature", o.skinSignature());
+        return Map.of("uuid", o.uuid().toString(), "username", o.username(), "skin", skin);
+    }
+
+    private void send(List<Map<String, Object>> players) {
         try {
             api.send("PUT", PATH, Map.of("players", players));
             if (failing) plugin.getLogger().info("[Presence] reporting who is online works again.");
