@@ -18,21 +18,22 @@ class PresenceReporterTest {
     @Test
     void reportsEveryoneOnline() {
         assertThat(PresenceReporter.body(ONLINE, null)).containsExactly(
-                Map.<String, Object>of("uuid", HEKTOR.toString(), "username", "HektorTM"),
-                Map.<String, Object>of("uuid", NOTCH.toString(), "username", "Notch"));
+                Map.<String, Object>of("uuid", HEKTOR.toString(), "username", "HektorTM", "prefix", "", "weight", 0),
+                Map.<String, Object>of("uuid", NOTCH.toString(), "username", "Notch", "prefix", "", "weight", 0));
     }
 
     @Test
     void leavesOutThePlayerWhoIsQuitting() {
         assertThat(PresenceReporter.body(ONLINE, NOTCH))
-                .containsExactly(Map.<String, Object>of("uuid", HEKTOR.toString(), "username", "HektorTM"));
+                .containsExactly(Map.<String, Object>of("uuid", HEKTOR.toString(), "username", "HektorTM", "prefix", "", "weight", 0));
     }
 
     @Test
-    void sendsTheSkinWhenThePlayerHasOne() {
-        assertThat(PresenceReporter.body(List.of(new PresenceReporter.Online(HEKTOR, "HektorTM", "tex", "sig")), null))
+    void sendsTheRankAndTheSkin() {
+        PresenceReporter.Online admin = new PresenceReporter.Online(HEKTOR, "HektorTM", new PlayerRank("&c[Admin]", 100), "tex", "sig");
+        assertThat(PresenceReporter.body(List.of(admin), null))
                 .containsExactly(Map.<String, Object>of("uuid", HEKTOR.toString(), "username", "HektorTM",
-                        "skin", Map.of("value", "tex", "signature", "sig")));
+                        "prefix", "&c[Admin]", "weight", 100, "skin", Map.of("value", "tex", "signature", "sig")));
     }
 
     @Test

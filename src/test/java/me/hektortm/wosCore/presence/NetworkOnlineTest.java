@@ -63,12 +63,12 @@ class NetworkOnlineTest {
     @Test
     void readsTheTabListFields() throws Exception {
         NetworkOnline online = answering(200, "[{\"uuid\":\"069a79f4-44e9-4726-a5be-fca90e38aaf5\",\"username\":\"Alex\",\"server\":\"hub-1\","
-                + "\"server_tag\":\"hub\",\"prefix\":\"&6[King]\",\"skin\":{\"value\":\"tex\",\"signature\":\"sig\"}},"
+                + "\"server_tag\":\"hub\",\"prefix\":\"&6[King]\",\"weight\":50,\"skin\":{\"value\":\"tex\",\"signature\":\"sig\"}},"
                 + "{\"uuid\":\"28c63f65-52cc-47f0-8246-b16f2176da23\",\"username\":\"Sam\",\"server\":\"live\",\"server_tag\":\"live\",\"prefix\":\"\",\"skin\":null}]");
 
         assertThat(online.fetch()).containsExactly(
-                new NetworkPlayer(UUID.fromString("069a79f4-44e9-4726-a5be-fca90e38aaf5"), "Alex", "hub-1", "hub", "&6[King]", "tex", "sig"),
-                new NetworkPlayer(UUID.fromString("28c63f65-52cc-47f0-8246-b16f2176da23"), "Sam", "live", "live", "", null, null));
+                new NetworkPlayer(UUID.fromString("069a79f4-44e9-4726-a5be-fca90e38aaf5"), "Alex", "hub-1", "hub", "&6[King]", 50, "tex", "sig"),
+                new NetworkPlayer(UUID.fromString("28c63f65-52cc-47f0-8246-b16f2176da23"), "Sam", "live", "live", "", 0, null, null));
         assertThat(online.fetch().get(0).onHub()).isTrue();
     }
 

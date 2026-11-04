@@ -36,21 +36,23 @@ public final class PresenceReporter implements Listener {
     private static final long HEARTBEAT_TICKS = 20L * 30;
 
     /**
-     * One online player, as reported, with their skin (the signed "textures" property the proxy
-     * forwarded) so the other servers' tab lists can show their head; {@code null} when there is none.
+     * One online player, as reported, with their LuckPerms rank and their skin (the signed "textures"
+     * property the proxy forwarded), so the other servers' tab lists can show their prefix and head and
+     * sort them; the skin is {@code null} when there is none.
      */
-    public record Online(UUID uuid, String username, @Nullable String skinValue, @Nullable String skinSignature) {
+    public record Online(UUID uuid, String username, PlayerRank rank, @Nullable String skinValue, @Nullable String skinSignature) {
         public Online(UUID uuid, String username) {
-            this(uuid, username, null, null);
+            this(uuid, username, PlayerRank.NONE, null, null);
         }
 
         static Online of(Player p) {
+            PlayerRank rank = PlayerRank.of(p);
             for (ProfileProperty prop : p.getPlayerProfile().getProperties()) {
                 if (prop.getName().equals("textures")) {
-                    return new Online(p.getUniqueId(), p.getName(), prop.getValue(), prop.getSignature());
+                    return new Online(p.getUniqueId(), p.getName(), rank, prop.getValue(), prop.getSignature());
                 }
             }
-            return new Online(p.getUniqueId(), p.getName());
+            return new Online(p.getUniqueId(), p.getName(), rank, null, null);
         }
     }
 
@@ -131,7 +133,7 @@ public final class PresenceReporter implements Listener {
         }
     }
 
-    /** The report's players: everyone online except the one leaving, each with their skin when they have one. */
+    /** The report's players: everyone online except the one leaving, each with their rank, and their skin when they have one. */
     static List<Map<String, Object>> body(Collection<Online> online, @Nullable UUID leaving) {
         return online.stream()
                 .filter(o -> !o.uuid().equals(leaving))
@@ -140,13 +142,18 @@ public final class PresenceReporter implements Listener {
     }
 
     private static Map<String, Object> row(Online o) {
-        if (o.skinValue() == null || o.skinValue().isEmpty()) {
-            return Map.of("uuid", o.uuid().toString(), "username", o.username());
+        Map<String, Object> row = new java.util.HashMap<>();
+        row.put("uuid", o.uuid().toString());
+        row.put("username", o.username());
+        row.put("prefix", o.rank().prefix());
+        row.put("weight", o.rank().weight());
+        if (o.skinValue() != null && !o.skinValue().isEmpty()) {
+            Map<String, String> skin = new java.util.HashMap<>();
+            skin.put("value", o.skinValue());
+            if (o.skinSignature() != null) skin.put("signature", o.skinSignature());
+            row.put("skin", skin);
         }
-        Map<String, String> skin = new java.util.HashMap<>();
-        skin.put("value", o.skinValue());
-        if (o.skinSignature() != null) skin.put("signature", o.skinSignature());
-        return Map.of("uuid", o.uuid().toString(), "username", o.username(), "skin", skin);
+        return row;
     }
 
     private void send(List<Map<String, Object>> players) {

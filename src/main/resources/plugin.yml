@@ -3,6 +3,8 @@ version: '${project.version}'
 main: me.hektortm.wosCore.WoSCore
 api-version: '1.21.8'
 author: HektorTM
+# The player ranks (prefix, group weight) come from LuckPerms: load after it when it is there.
+softdepend: [LuckPerms]
 commands:
   core:
     description: core commands
